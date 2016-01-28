@@ -1,0 +1,94 @@
+This program performs proteogenomic mapping as described in <citation>.
+The program can either be run with a graphical user interface (GUI) or from the command line.
+
+In order to run the GUI mode, simply run the program with no arguments.
+	java -jar ProteogenomicMapping.jar
+
+
+SequestDifference Mode
+
+The "SequestDifference" mode is used to compare Sequest output files for the proteome and the genome.
+Only sequences unique to the proteome are retained.
+It produces a tab delimited output file of each unique sequence, the number of times that sequence occured and the probability of that sequence.
+Example usage of SequestDifference:
+
+	java -jar ProteogenomicMapping.jar -m SequestDifference -g sequest.genome.txt -p sequest.proteome.txt -o unique.genome.txt
+
+PGM mode
+
+The PGM mode is used to map peptide sequences to a genome to find ePSTs.
+
+--help, -h			display this message
+--peptideFilePath, -p		the path to the fasta file containing the peptides for which to search (needles)
+--referenceFilePath, -r		the path to the fasta file containing the reference sequences against which to search (haystacks)
+--codeFile, -c			the path to the file containing the mapping from codons to amino acids, as well as start and end sequences, see <ncbi_link> for more details
+--codeName, -n			[optional] the particular code table to use for the mapping.  By default, the 'Standard' table will be used.
+
+--outputFilename, -o		the path where the full output will be written
+--outputFastaFilename, -f	the path where the fasta file containing the ePSTs generated according to the 'isEukaryote' and 'codon' flags will be written
+--outputGff3Filename, -3	[optional] the path where the gff file containing the ePSTs and rtps will be written.
+
+--isEukaryote, -i		[optional] a boolean string ('true' or 'false') indicating whether the organism is eukaryotic.  If this is 'true', then splicing will be performed; otherwise, splice sites will be ignored.
+--beginSpliceSitesPath, -b	[optional] the path to the file defining the DNA sequences used to mark the beginning of splice sites.  By default, the cannonical begin splice sites are used.
+--endSpliceSitesPath, -e	[optional] the path to the file defining the DNA sequences used to mark the ending of splice sites.  By default, the cannonical ending splice sites are used.
+--codons, -d			[optional] an integer indicating that, rather than searching for start and stop codons or beginning and ending splice sites, simply look upstream and downstream a fixed amount from the reverse translated peptide.  This flag overrides the 'isEukaryote' flag if both are present.
+--geneSplicerOutputPath, -g	[optional] the path with the output of gene splicer.  these mark the exact coordinates of splice site boundaries and are used when determining the ePSTs.
+
+--tabbedFile, -t		[optional] instead of a fasta file, the lines of the input file are of the form <sequence>\	<probability>.
+--mode, -m			[optional] the mode of the program to use. "PGM" (default) or "SequestDifference".
+
+So, for example, to use the standard codon table and generate the ePSTs according to the algorithm described in the paper for a prokaryote
+	java -jar ProteogenomicMapping.jar --peptideFilePath myPeptides.fa --referenceFilePath myGenome.fa --codeFile genetic_code_table.txt --outputFilePath myMapping.txt --fastaFilePath myMapping.fa
+	-- or --
+	java -jar ProteogenomicMapping.jar -p myPeptides.fa -r myGenome.fa -c genetic_code_table.txt -o myMapping.txt -f myMapping.fa -3 myMapping.gff3
+
+
+The output file contains 16 columns.
+
+Peptide ID			The identifier of the mapped peptide from the given peptide fasta file.
+Peptide Sequence		The sequence of the mapped peptide from the given peptide fasta file.
+Genome ID			The identifier of the sequence into which the peptide mapped from the given reference fasta file.
+Start				The beginning (base 1) position of the reference sequence to which the peptide mapped.
+End				The ending (base 1) position of the reference sequence to which the peptide mapped.
+Strand				The strand onto which the peptide mapped.
+Reading Frame			The reading frame into which the peptide mapped.
+RT Peptide Sequence		The DNA sequence onto which the peptide mapped.
+ePST Start			The starting position of the generated ePST, based on the 'isEukaryote' and 'codon' flags.
+ePST End			The ending position of the generated ePST, based on the 'isEukaryote' and 'codon' flags.
+ePST				The DNA sequence of the reference sequence from the start to the end of the ePST.
+ePST Length			The length of the generated ePST, in terms of DNA nucleotides.
+Translated ePST			The protein sequence of the ePST.
+Start Codon			The start codon of the generated ePST, or "-" if no start codon was found.
+Peptide Probability		The probability of this peptide sequence.
+Peptide Count			The number of times this peptide sequence appeared in the original Sequest file.
+
+The script "FindUniqueEpsts.pl" can be used to calculate the probability and counts of each unique ePST.
+It takes as input the output file described above, and adds two additional columns: ePST Probability and ePST Count.
+ePST Probability is the product of the peptide probabilities for the peptides which map to the same ePST.
+ePSTs are considered "the same" if they have the same start and end coordinates (ePST Start and ePST End from the file).
+ePST Count is the sum of peptide counts for the peptides which map to the same ePST.
+Example usage of "FindUniqueEpsts.pl"
+
+./FindUniqueEpsts.pl myMapping.txt myMapping.epst.txt
+
+
+
+The output gff3 file contains the standard 9 columns (http://gmod.org/wiki/GFF3).
+It contains two entries for each ePST.  The first entry contains only the positions of the RTP.
+The second entry contains the positions of the entire ePST.
+
+seqid		The Genome ID is used for the sequence ID
+source		"ProteogenomicMapping,RTP" or "ProteogenomicMapping,ePST" depending on whether the entry is an RTP or ePST
+type		"region" all entries are treated as generic features
+start		The start of the the RTP or ePST depending upon the type of entry
+end		The end of the RTP or ePST depending upon the type of the entry
+score		"." no entries are assigned a score
+strand		The strand to which the RTP mapped
+phase		"." no entries are assigned a phase
+attributes	"ID=<Peptide ID>; Name=<Peptide ID>" all entries are assigned both an ID and a name based on the peptide id
+
+
+
+
+
+This project uses the JSAP Project: http://martiansoftware.com/jsap/
